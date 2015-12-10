@@ -1,8 +1,7 @@
 # OpenNI 2 Recorder
 
-Records video and depth frame from a 3D sensing camera (like Microsoft Kinect or Asus Xtion Pro).
-
-Saves current image via key `s`. Resolution and file paths can be changed in `config.ini`.
+Records color and depth video from a 3D sensing camera (like Microsoft Kinect or Asus Xtion Pro).
+Saves current frames via key `s`. Resolution and file paths can be changed in `config.ini`.
 
 ## Installation
 
