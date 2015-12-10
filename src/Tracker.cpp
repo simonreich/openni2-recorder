@@ -35,10 +35,11 @@ int main(int argc, char *argv[])
     size = cv::Size(width, height);
     
 
-    screenshot_color_dir = config["screenshot_color_dir"];
-    screenshot_depth_dir = config["screenshot_depth_dir"];
-    video_color_dir = config["video_color_dir"];
-    video_depth_dir = config["video_depth_dir"];
+    std::string directory = config["directory"];
+    screenshot_color_dir = directory + config["screenshot_color_name"];
+    screenshot_depth_dir = directory + config["screenshot_depth_name"];
+    video_color_dir = directory + config["video_color_name"];
+    video_depth_dir = directory + config["video_depth_name"];
 	
 	
 	video_color_writer = new cv::VideoWriter(video_color_dir, CV_FOURCC('j','p','e','g'), 30, size, true);
