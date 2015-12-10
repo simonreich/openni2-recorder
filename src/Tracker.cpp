@@ -1,7 +1,6 @@
+#include "ini.hpp"
 #include <opencv2/opencv.hpp>
 #include "OpenNI.h"
-
-#include "ini.hpp"
 
 
 

@@ -2,7 +2,7 @@
 
 Records video and depth frame from a 3D sensing camera (like Microsoft Kinect or Asus Xtion Pro).
 
-Saves current image via key `p`.
+Saves current image via key `s`. Resolution and file paths can be changed in `config.ini`.
 
 ## Installation
 
@@ -16,7 +16,6 @@ Colored Sphere Tracking uses [CMake](http://www.cmake.org) for building, therefo
 - `cmake ..`
 - `make`
 
-Homebrew: `cmake -DOPENNI2_LIBRARY=/usr/local/lib/ni2 -DOPENNI2_INCLUDE_DIR=/usr/local/include/ni2 ..`
 
 ## Contribution
 
