@@ -12,6 +12,8 @@ std::string screenshot_depth_dir;
 std::string video_color_dir;
 std::string video_depth_dir;
 
+cv::VideoWriter *video_color_writer;
+cv::VideoWriter *video_depth_writer;
 
 
 using namespace openni;
@@ -39,10 +41,14 @@ int main(int argc, char *argv[])
     video_color_dir = config["video_color_dir"];
     video_depth_dir = config["video_depth_dir"];
 	
+	
+	video_color_writer = new cv::VideoWriter(video_color_dir, CV_FOURCC('j','p','e','g'), 30, size, true);
+	video_depth_writer = new cv::VideoWriter(video_depth_dir, CV_FOURCC('j','p','e','g'), 30, size, false);
+	
     
     
 	// Initialize OpenNI
-    if (STATUS_OK != OpenNI::initialize())
+    if (OpenNI::initialize() != STATUS_OK)
 	{
         std::cerr << "OpenNI Initial Error: "  << OpenNI::getExtendedError() << std::endl;
     	return -1;
@@ -50,7 +56,7 @@ int main(int argc, char *argv[])
   
 	// Open Device
     Device device;
-    if (STATUS_OK != device.open(ANY_DEVICE))
+    if (device.open(ANY_DEVICE) != STATUS_OK)
 	{
         std::cerr << "Can't Open Device: "  << OpenNI::getExtendedError() << std::endl;
     	return -1;
@@ -58,7 +64,7 @@ int main(int argc, char *argv[])
   
 	// Create depth stream
 	VideoStream depth_stream;
-    if (STATUS_OK == depth_stream.create(device, SENSOR_DEPTH))
+    if (depth_stream.create(device, SENSOR_DEPTH) == STATUS_OK)
     {
 	    // 3a. set video mode
     	VideoMode mode;
@@ -121,29 +127,21 @@ int main(int argc, char *argv[])
 	int max_depth = depth_stream.getMaxPixelValue();	
     
     // Read first frame
-    if (STATUS_OK != color_stream.readFrame(&color_frame))
+    if (color_stream.readFrame(&color_frame) != STATUS_OK)
     {
         std::cerr << "Can't read color frame." << std::endl;
         return -1;
     }
-    if (STATUS_OK != depth_stream.readFrame(&depth_frame))
+    if (depth_stream.readFrame(&depth_frame) != STATUS_OK)
     {
         std::cerr << "Can't read depth frame." << std::endl;
         return -1;
     }
-    const cv::Mat color_frame_temp( color_frame.getHeight(), color_frame.getWidth(), CV_8UC3, (void*)color_frame.getData() );
-    cv::Mat frame_color_temp;
-    cv::cvtColor(color_frame_temp, frame_color_temp, CV_RGB2BGR);
-    
-    const cv::Mat depth_frame_temp( depth_frame.getHeight(), depth_frame.getWidth(), CV_16UC1, (void*)depth_frame.getData() );
-    cv::Mat frame_depth_temp;
-    depth_frame_temp.convertTo(frame_depth_temp, CV_8U, 255. / max_depth);
-    
-	
     
     
     // Prepare while loop
-	while (true)
+	bool recording = true;
+	while (recording)
 	{
     	// Check possible errors
     	if (!color_stream.isValid())
@@ -166,17 +164,23 @@ int main(int argc, char *argv[])
     	
         
     	// Grab frames, result is frame and frame_depth
-    	const cv::Mat color_frame_temp( color_frame.getHeight(), color_frame.getWidth(), CV_8UC3, (void*)color_frame.getData() );
+    	const cv::Mat color_frame_temp( size, CV_8UC3, (void*)color_frame.getData() );
         cv::Mat frame_color;
         cv::cvtColor(color_frame_temp, frame_color, CV_RGB2BGR);
         
-    	const cv::Mat depth_frame_temp( depth_frame.getHeight(), depth_frame.getWidth(), CV_16UC1, (void*)depth_frame.getData() );
+    	const cv::Mat depth_frame_temp( size, CV_16UC1, (void*)depth_frame.getData() );
     	cv::Mat frame_depth;
     	depth_frame_temp.convertTo(frame_depth, CV_8U, 255. / max_depth);
+		cv::Mat frame_depth_color;
+		cv::cvtColor(frame_depth, frame_depth_color, CV_GRAY2BGR);
 		
-		cv::imshow("color", frame_color);
-		cv::imshow("depth", frame_depth);
-        
+		video_color_writer->write(frame_color);
+		video_depth_writer->write(frame_depth_color);
+		
+		
+		cv::imshow("Color", frame_color);
+		cv::imshow("Depth", frame_depth);
+		
         
         // React on keyboard input
     	char key = cv::waitKey(10);
@@ -189,7 +193,7 @@ int main(int argc, char *argv[])
                 break;
                 
             case 'q':
-                return 0;
+                recording = false;
                 break;
         }
 	}
