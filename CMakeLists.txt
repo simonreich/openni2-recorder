@@ -3,7 +3,7 @@ project(recorder)
 
 
 set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CXX_FLAGS "-std=c++17 -O")
+set(CMAKE_CXX_FLAGS "-std=c++11 -O")
 
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/)
@@ -11,7 +11,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/)
 
 find_package(OpenNI2 REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(Boost COMPONENTS filesystem system REQUIRED)
+find_package(Boost COMPONENTS filesystem system atomic REQUIRED)
 
 
 link_directories(${OPENNI2_INCLUDE_DIRS})

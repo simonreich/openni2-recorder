@@ -5,6 +5,7 @@
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+#include <thread>
 
 // OpenCV
 #include <opencv2/opencv.hpp>
@@ -14,18 +15,59 @@
 
 // Boost
 #include <boost/filesystem.hpp>
+#include <boost/atomic.hpp>
 
 // Recorder
 #include "ini.hpp"
 
 
+// image size
 cv::Size size;
-
-cv::VideoWriter *video_color_writer;
-cv::VideoWriter *video_depth_writer;
-
+// main loop
+boost::atomic<bool> recording(true);
+// save screen shot
+boost::atomic<bool> writescreenshot(false);
+// holds current data
+cv::Mat frame_color;
+cv::Mat frame_depth;
 
 using namespace openni;
+
+
+
+
+
+void onKeyStroke()
+{
+    // Print help
+    std::cout << "s - take and save screenshot" << std::endl;
+    std::cout << "q - quit" << std::endl;
+
+    while(recording)
+    {
+        //show window
+        cv::imshow("Color", frame_color);
+        cv::imshow("Depth", frame_depth);
+        
+        
+        // React on keyboard input
+        char key = cv::waitKey(10);
+        switch (key)
+        {
+             case 's':
+                 writescreenshot = true;
+                 break;
+                
+             case 'q':
+                 recording = false;
+                 break;
+        }
+    }
+}
+
+
+
+
 
 int main(int argc, char *argv[])
 {
@@ -45,6 +87,11 @@ int main(int argc, char *argv[])
 
     // create opencv size
     size = cv::Size(width, height);
+
+    // init matrix with zero
+    frame_color = cv::Mat::zeros(height, width, CV_64F);
+    frame_depth = cv::Mat::zeros(height, width, CV_64F);
+
     
 
     // create directory to store data
@@ -76,10 +123,6 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    // open video
-    video_color_writer = new cv::VideoWriter(subdirectory + "/" + "video_color.avi", CV_FOURCC('j','p','e','g'), 25, size, true);
-    video_depth_writer = new cv::VideoWriter(subdirectory + "/" + "video_depth.avi", CV_FOURCC('j','p','e','g'), 25, size, false);
-
     // open png
     std::vector<int> compression_params;
     compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
@@ -107,7 +150,7 @@ int main(int argc, char *argv[])
         // 3a. set video mode
         VideoMode mode;
         mode.setResolution(size.width, size.height);
-        mode.setFps(25);
+        mode.setFps(30);
         mode.setPixelFormat(PIXEL_FORMAT_DEPTH_1_MM);
 
         if (STATUS_OK != depth_stream.setVideoMode(mode))
@@ -130,7 +173,7 @@ int main(int argc, char *argv[])
             // 4a. set video mode
             VideoMode mode;
             mode.setResolution(size.width, size.height);
-            mode.setFps(25);
+            mode.setFps(30);
             mode.setPixelFormat(PIXEL_FORMAT_RGB888);
             
             if (STATUS_OK != color_stream.setVideoMode(mode))
@@ -151,10 +194,9 @@ int main(int argc, char *argv[])
         }
     }
     
-    
-    // Print help
-    std::cout << "s - take and save screenshot \n"
-        << "q - quit" << std::endl;
+    // start a thread, which handles key strokes
+    std::thread th(onKeyStroke);
+
     
 
     // Init color and depth frames, start streames
@@ -178,7 +220,6 @@ int main(int argc, char *argv[])
 
 
     // Prepare while loop
-    bool recording = true;
     while (recording)
     {
         // Check possible errors
@@ -202,13 +243,11 @@ int main(int argc, char *argv[])
 
         // Grab frames, result is frame and frame_depth
         const cv::Mat color_frame_temp( size, CV_8UC3, (void*)color_frame.getData() );
-        cv::Mat frame_color;
         cv::cvtColor(color_frame_temp, frame_color, CV_RGB2BGR);
 
         const cv::Mat depth_frame_temp( size, CV_16UC1, (void*)depth_frame.getData() );
-        cv::Mat frame_depth;
-        depth_frame_temp.convertTo(frame_depth, CV_8U, 255. / max_depth);
         cv::Mat frame_depth_color;
+        depth_frame_temp.convertTo(frame_depth, CV_8U, 255. / max_depth);
         cv::cvtColor(frame_depth, frame_depth_color, CV_GRAY2BGR);
 
         // create time stamp
@@ -235,18 +274,6 @@ int main(int argc, char *argv[])
             << ms;
         std::string timestamp = ss.str();
 
-        // store avi        
-        try
-        {
-            video_color_writer->write(frame_color);
-            video_depth_writer->write(frame_depth_color);
-        }
-        catch (std::runtime_error& ex)
-        {
-            std::cerr << "Exception storing video file: " <<  ex.what() << std::endl;
-            return -1;
-        }
-
         // store frame png
         try
         {
@@ -258,27 +285,20 @@ int main(int argc, char *argv[])
             std::cerr << "Exception converting image to PNG format: " <<  ex.what() << std::endl;
             return -1;
         }
-        
-        // show window
-        cv::imshow("Color", frame_color);
-        cv::imshow("Depth", frame_depth);
-        
-        
-        // React on keyboard input
-        char key = cv::waitKey(10);
-        switch (key)
+
+        // store screenshot
+        if (writescreenshot)
         {
-            case 's':
-                cv::imwrite(subdirectory + "/screenshot_" + timestamp + "_rgb.png", frame_color);
-                cv::imwrite(subdirectory + "/screenshot_" + timestamp + "_depth.png", frame_depth);
-                std::cout << "Screenshot saved." << std::endl;
-                break;
-                
-            case 'q':
-                recording = false;
-                break;
+             cv::imwrite(subdirectory + "/screenshot_" + timestamp + "_rgb.png", frame_color);
+             cv::imwrite(subdirectory + "/screenshot_" + timestamp + "_depth.png", frame_depth);
+             writescreenshot = false;
+             std::cout << "Screenshot saved." << std::endl;
         }
     }
+
+
+    // kill thread
+    th.join();
     
     // Destroy objects, otherwise errors will occure next time...
     depth_stream.destroy();
