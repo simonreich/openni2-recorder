@@ -24,15 +24,18 @@
 // image size
 cv::Size size;
 // main loop
-boost::atomic<bool> recording(true);
+bool recording(true);
 // save screen shot
-boost::atomic<bool> writescreenshot(false);
+bool writescreenshot(false);
 // holds current data
 cv::Mat frame_color;
 cv::Mat frame_depth;
 
-using namespace openni;
 
+
+
+
+using namespace openni;
 
 
 
