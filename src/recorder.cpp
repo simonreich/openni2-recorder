@@ -15,7 +15,6 @@
 
 // Boost
 #include <boost/filesystem.hpp>
-#include <boost/atomic.hpp>
 
 // Recorder
 #include "ini.hpp"
@@ -27,6 +26,10 @@ cv::Size size;
 bool recording(true);
 // save screen shot
 bool writescreenshot(false);
+// save avi
+bool writeavi(false);
+// save png
+bool writepng(true);
 // holds current data
 cv::Mat frame_color;
 cv::Mat frame_depth;
@@ -43,8 +46,10 @@ using namespace openni;
 void onKeyStroke()
 {
     // Print help
-    std::cout << "s - take and save screenshot" << std::endl;
-    std::cout << "q - quit" << std::endl;
+    std::cout << "s - take and save screenshot." << std::endl;
+    std::cout << "v - save video. Warning: This hurts fps." << std::endl;
+    std::cout << "p - save single frames as png files." << std::endl;
+    std::cout << "q - quit." << std::endl;
 
     while(recording)
     {
@@ -57,6 +62,22 @@ void onKeyStroke()
         char key = cv::waitKey(10);
         switch (key)
         {
+             case 'v':
+                 writeavi = !writeavi;
+                 if(writeavi)
+                     std::cout << "Video output turned on." << std::endl;
+                 else
+                     std::cout << "Video output turned off." << std::endl;
+                 break;
+
+             case 'p':
+                 writepng = !writepng;
+                 if(writepng)
+                     std::cout << "png output turned on." << std::endl;
+                 else
+                     std::cout << "png output turned off." << std::endl;
+                 break;
+
              case 's':
                  writescreenshot = true;
                  break;
@@ -87,6 +108,9 @@ int main(int argc, char *argv[])
     int width = std::stoi(config["width"]);
     int height = std::stoi(config["height"]);
     std::string directory = config["directory"];
+
+    writeavi = (bool)std::stoi(config["writeavi"]);
+    writepng = (bool)std::stoi(config["writepng"]);
 
     // create opencv size
     size = cv::Size(width, height);
@@ -130,6 +154,12 @@ int main(int argc, char *argv[])
     std::vector<int> compression_params;
     compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
     compression_params.push_back(0);        // do not use compressioon
+
+    // open avi writer
+    cv::VideoWriter *video_color_writer;
+    cv::VideoWriter *video_depth_writer;
+    video_color_writer = new cv::VideoWriter(subdirectory + "/" + "video_color.avi", CV_FOURCC('j','p','e','g'), 25, size, true);
+    video_depth_writer = new cv::VideoWriter(subdirectory + "/" + "video_depth.avi", CV_FOURCC('j','p','e','g'), 25, size, true);
     
     // Initialize OpenNI
     if (OpenNI::initialize() != STATUS_OK)
@@ -278,15 +308,33 @@ int main(int argc, char *argv[])
         std::string timestamp = ss.str();
 
         // store frame png
-        try
+        if(writepng)
         {
-            imwrite(subdirectory + "/frame_" + timestamp + "_rgb.png", frame_color, compression_params);
-            imwrite(subdirectory + "/frame_" + timestamp + "_depth.png", frame_depth_color, compression_params);
+            try
+            {
+                imwrite(subdirectory + "/frame_" + timestamp + "_rgb.png", frame_color, compression_params);
+                imwrite(subdirectory + "/frame_" + timestamp + "_depth.png", frame_depth, compression_params);
+            }
+            catch (std::runtime_error& ex)
+            {
+                std::cerr << "Exception converting image to PNG format: " <<  ex.what() << std::endl;
+                return -1;
+            }
         }
-        catch (std::runtime_error& ex)
+
+        // store avi        
+        if(writeavi)
         {
-            std::cerr << "Exception converting image to PNG format: " <<  ex.what() << std::endl;
-            return -1;
+            try
+            {
+                video_color_writer->write(frame_color);
+                video_depth_writer->write(frame_depth_color);
+            }
+            catch (std::runtime_error& ex)
+            {
+                std::cerr << "Exception storing video file: " <<  ex.what() << std::endl;
+                return -1;
+            }
         }
 
         // store screenshot
