@@ -54,8 +54,8 @@ void onKeyStroke()
     while(recording)
     {
         //show window
-        cv::imshow("Color", frame_color);
         cv::imshow("Depth", frame_depth);
+        cv::imshow("Color", frame_color);
         
         
         // React on keyboard input
@@ -275,13 +275,14 @@ int main(int argc, char *argv[])
         }
 
         // Grab frames, result is frame and frame_depth
-        const cv::Mat color_frame_temp( size, CV_8UC3, (void*)color_frame.getData() );
-        cv::cvtColor(color_frame_temp, frame_color, CV_RGB2BGR);
+        const cv::Mat cam_rgb( size, CV_8UC3, (void*)color_frame.getData() );
+        cv::cvtColor(cam_rgb, frame_color, CV_RGB2BGR);
 
-        const cv::Mat depth_frame_temp( size, CV_16UC1, (void*)depth_frame.getData() );
-        cv::Mat frame_depth_color;
-        depth_frame_temp.convertTo(frame_depth, CV_8U, 255. / max_depth);
-        cv::cvtColor(frame_depth, frame_depth_color, CV_GRAY2BGR);
+        const cv::Mat cam_depth( size, CV_16UC1, (void*)depth_frame.getData() );
+        cam_depth.convertTo(frame_depth, CV_32F, 1.0f/1000);
+        cv::Mat frame_depth_avi;
+        cam_depth.convertTo(frame_depth_avi, CV_8U, 255. / max_depth);
+        cv::cvtColor(frame_depth_avi, frame_depth_avi, CV_GRAY2BGR);
 
         // create time stamp
         time_t t = time(0);   // get time now
@@ -313,7 +314,7 @@ int main(int argc, char *argv[])
             try
             {
                 imwrite(subdirectory + "/frame_" + timestamp + "_rgb.png", frame_color, compression_params);
-                imwrite(subdirectory + "/frame_" + timestamp + "_depth.png", frame_depth, compression_params);
+                imwrite(subdirectory + "/frame_" + timestamp + "_depth.png", cam_depth, compression_params);
             }
             catch (std::runtime_error& ex)
             {
@@ -328,7 +329,7 @@ int main(int argc, char *argv[])
             try
             {
                 video_color_writer->write(frame_color);
-                video_depth_writer->write(frame_depth_color);
+                video_depth_writer->write(frame_depth_avi);
             }
             catch (std::runtime_error& ex)
             {

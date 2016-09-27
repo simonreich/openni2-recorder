@@ -3,7 +3,7 @@ project(recorder)
 
 
 set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CXX_FLAGS "-std=c++11 -O")
+set(CMAKE_CXX_FLAGS "-std=c++17 -O -lpthread")
 
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/)
